@@ -49,7 +49,7 @@ from vita import (
     add_vita_config,
 )
 
-from genvis import add_genvis_config
+from genvis import add_genvis_config, WandBWriter
 
 class Trainer(DefaultTrainer):
     """
@@ -212,6 +212,12 @@ class Trainer(DefaultTrainer):
         if not cfg.SOLVER.CLIP_GRADIENTS.CLIP_TYPE == "full_model":
             optimizer = maybe_add_gradient_clipping(cfg, optimizer)
         return optimizer
+
+    def build_writers(self):
+        default_writers = super(Trainer, self).build_writers()
+        if self.cfg.WANDB.ENABLED:
+            default_writers.append(WandBWriter(self.cfg))
+        return default_writers
 
     @classmethod
     def test(cls, cfg, model, evaluators=None):
