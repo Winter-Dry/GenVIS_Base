@@ -12,4 +12,5 @@ def add_genvis_config(cfg):
     cfg.WANDB.NAME = ""
     cfg.WANDB.PROJECT = "tdn-genvis"
     cfg.WANDB.GROUP = "YTVIS21_exp"
-    cfg.WANDB.RESUME = 'False'
+    cfg.WANDB.RESUME = 'None'
+    cfg.WANDB.RESUME_ID = ''

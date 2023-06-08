@@ -16,12 +16,21 @@ class WandBWriter(EventWriter):
             kwargs: other arguments passed to `torch.utils.tensorboard.SummaryWriter(...)`
         """
 
+        addition_args = {}
+
+        if cfg.WANDB.RESUME_ID != '':
+            addition_args['id'] = cfg.WANDB.RESUME_ID
+            addition_args['resume'] = 'must'
+
         if 'True' in cfg.WANDB.RESUME:
-            WANDB_RESUME = True
-        elif 'False' in cfg.WANDB.RESUME:
-            WANDB_RESUME = False
+            addition_args['resume'] = True
+        elif 'None' in cfg.WANDB.RESUME:
+            addition_args['resume'] = None
+        elif cfg.WANDB.RESUME in [ 'auto', 'allow', 'never', 'must']:
+            addition_args['resume'] = cfg.WANDB.RESUME
         else:
-            WANDB_RESUME = cfg.WANDB.RESUME
+            raise ValueError('WANDB.RESUME should be one of [True, False, None, "auto", "allow", "never", "must"]')
+
 
         self.cfg = cfg
         wandb.init(
@@ -29,8 +38,8 @@ class WandBWriter(EventWriter):
             name=cfg.WANDB.NAME if cfg.WANDB.NAME != "" else os.path.basename(cfg.OUTPUT_DIR.strip('/')),
             project=cfg.WANDB.PROJECT,
             group=cfg.WANDB.GROUP,
-            resume=WANDB_RESUME,
-            config=cfg
+            config=cfg,
+            **addition_args
         )
         self._window_size = window_size
         self._last_write = -1
