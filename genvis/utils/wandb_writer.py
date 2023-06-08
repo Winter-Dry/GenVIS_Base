@@ -20,6 +20,8 @@ class WandBWriter(EventWriter):
             WANDB_RESUME = True
         elif 'False' in cfg.WANDB.RESUME:
             WANDB_RESUME = False
+        else:
+            WANDB_RESUME = cfg.WANDB.RESUME
 
         self.cfg = cfg
         wandb.init(
