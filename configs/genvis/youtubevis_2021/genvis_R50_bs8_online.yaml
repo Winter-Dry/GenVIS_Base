@@ -12,9 +12,9 @@ DATASETS:
   TRAIN: ("ytvis_2021_train",) #("coco2ytvis2021_train", "ytvis_2021_train")
   TEST: ("ytvis_2021_val",)
 SOLVER:
-  IMS_PER_BATCH: 8
-  STEPS: (50000,)
-  MAX_ITER: 90000
+  IMS_PER_BATCH: 32  #8
+  STEPS: (12500,)  #(50000,)
+  MAX_ITER: 22500 #90000
   CHECKPOINT_PERIOD: 5000
 INPUT:
   SAMPLING_FRAME_NUM: 5
