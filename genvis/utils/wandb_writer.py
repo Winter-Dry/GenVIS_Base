@@ -17,9 +17,11 @@ class WandBWriter(EventWriter):
         """
 
         if 'True' in cfg.WANDB.RESUME:
-            cfg.WANDB.RESUME = True
+            WANDB_RESUME = True
         elif 'False' in cfg.WANDB.RESUME:
-            cfg.WANDB.RESUME = False
+            WANDB_RESUME = False
+        else:
+            WANDB_RESUME = cfg.WANDB.RESUME
 
         self.cfg = cfg
         wandb.init(
@@ -27,7 +29,7 @@ class WandBWriter(EventWriter):
             name=cfg.WANDB.NAME if cfg.WANDB.NAME != "" else os.path.basename(cfg.OUTPUT_DIR.strip('/')),
             project=cfg.WANDB.PROJECT,
             group=cfg.WANDB.GROUP,
-            resume=cfg.WANDB.RESUME,
+            resume=WANDB_RESUME,
             config=cfg
         )
         self._window_size = window_size
