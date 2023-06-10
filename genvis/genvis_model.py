@@ -101,6 +101,8 @@ class Genvis(Vita):
         images = ImageList.from_tensors(images, self.size_divisibility)
         features = self.backbone(images.tensor)
 
+        self.diff_feature_fusion(features)
+
         BT = len(images)
         T = self.num_frames if self.training else BT
         B = BT // T
@@ -208,7 +210,6 @@ class Genvis(Vita):
                                                                                -2:])  # (B,T,T-1,C,H,W) -> (B*T,(T-1)*C,H,W)
             features[k] = alpha1 * f.resize(BT, -1, *f.shape[-2:]) + alpha2 * self.diff_feature_conv[k](diff_features)
 
-        return diff_features
 
     def split_frame_targets(self, frame_targets, batch_size):
         T = self.num_frames
