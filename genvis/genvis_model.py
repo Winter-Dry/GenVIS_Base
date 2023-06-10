@@ -208,7 +208,7 @@ class Genvis(Vita):
 
             diff_features = torch.stack(diff_features, dim=1).reshape(BT, -1, *f.shape[
                                                                                -2:])  # (B,T,T-1,C,H,W) -> (B*T,(T-1)*C,H,W)
-            features[k] = alpha1 * f.resize(BT, -1, *f.shape[-2:]) + alpha2 * self.diff_feature_conv[k](diff_features)
+            features[k] = alpha1 * f.reshape(BT, -1, *f.shape[-2:]) + alpha2 * self.diff_feature_conv[k](diff_features)
 
 
     def split_frame_targets(self, frame_targets, batch_size):
