@@ -34,7 +34,7 @@ class Genvis(Vita):
 
         self.diff_conv = nn.ModuleDict()
         for k, v in self.backbone.output_shape().items():
-            self.diff_conv[k] = nn.Conv2d(in_channels=self.num_frames * v.channels, out_channels=v.channels,
+            self.diff_conv[k] = nn.Conv2d(in_channels=(self.num_frames - 1) * v.channels, out_channels=v.channels,
                                           kernel_size=1, stride=1)
 
     @classmethod
