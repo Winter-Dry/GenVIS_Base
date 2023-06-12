@@ -9,8 +9,8 @@ MODEL:
     LEN_CLIP_WINDOW: 3
 DATASETS:
   DATASET_RATIO: [1.0, 0.75]
-  TRAIN: ("coco2ytvis2021_train", "ytvis_2021_train")
-  TEST: ("ytvis_2021_val",)
+  TRAIN: ("ytvis_2021_mini_train",) # ("coco2ytvis2021_train", "ytvis_2021_train")
+  TEST: ("ytvis_2021_mini_val",)
 SOLVER:
   IMS_PER_BATCH: 8
   STEPS: (50000,)
