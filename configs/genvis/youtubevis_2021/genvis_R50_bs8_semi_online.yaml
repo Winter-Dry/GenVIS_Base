@@ -9,8 +9,8 @@ MODEL:
     LEN_CLIP_WINDOW: 3
 DATASETS:
   DATASET_RATIO: [1.0, 0.75]
-  TRAIN: ("coco2ytvis2021_train", "ytvis_2021_train")
-  TEST: ("ytvis_2021_val",)
+  TRAIN: ("ytvis_2021_mini_train",) #("coco2ytvis2021_train", "ytvis_2021_train")
+  TEST: ("ytvis_2021_mini_val",)
 SOLVER:
   IMS_PER_BATCH: 8
   STEPS: (50000,)
@@ -24,5 +24,5 @@ DATALOADER:
   FILTER_EMPTY_ANNOTATIONS: True
   NUM_WORKERS: 8
 TEST:
-  EVAL_PERIOD: 0
+  EVAL_PERIOD: 1000
   DETECTIONS_PER_IMAGE: 10
