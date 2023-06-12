@@ -10,12 +10,15 @@ from collections import OrderedDict
 import pycocotools.mask as mask_util
 import torch
 from .datasets.ytvis_api.ytvos import YTVOS
+from .datasets.ytvis_api.ytvoseval import YTVOSeval
+from tabulate import tabulate
 
 import detectron2.utils.comm as comm
 from detectron2.config import CfgNode
 from detectron2.data import MetadataCatalog
 from detectron2.evaluation import DatasetEvaluator
 from detectron2.utils.file_io import PathManager
+from detectron2.utils.logger import create_small_table
 
 
 class YTVISEvaluator(DatasetEvaluator):
@@ -86,6 +89,10 @@ class YTVISEvaluator(DatasetEvaluator):
         json_file = PathManager.get_local_path(self._metadata.json_file)
         with contextlib.redirect_stdout(io.StringIO()):
             self._ytvis_api = YTVOS(json_file)
+
+        # Test set json files do not contain annotations (evaluation must be
+        # performed using the COCO evaluation server).
+        self._do_evaluation = "annotations" in self._ytvis_api.dataset
 
     def reset(self):
         self._predictions = []
@@ -162,8 +169,85 @@ class YTVISEvaluator(DatasetEvaluator):
                 f.write(json.dumps(predictions))
                 f.flush()
 
-        self._logger.info("Annotations are not available for evaluation.")
-        return
+        if not self._do_evaluation:
+            self._logger.info("Annotations are not available for evaluation.")
+            return
+
+        coco_eval = (
+            _evaluate_predictions_on_coco(
+                self._ytvis_api,
+                predictions,
+            )
+            if len(predictions) > 0
+            else None  # cocoapi does not handle empty results very well
+        )
+
+        res = self._derive_coco_results(
+            coco_eval, class_names=self._metadata.get("thing_classes")
+        )
+        self._results["segm"] = res
+
+    def _derive_coco_results(self, coco_eval, class_names=None):
+        """
+        Derive the desired score numbers from summarized COCOeval.
+        Args:
+            coco_eval (None or COCOEval): None represents no predictions from model.
+            iou_type (str):
+            class_names (None or list[str]): if provided, will use it to predict
+                per-category AP.
+        Returns:
+            a dict of {metric name: score}
+        """
+
+        metrics = ["AP", "AP50", "AP75", "APs", "APm", "APl", "AR1", "AR10"]
+
+        if coco_eval is None:
+            self._logger.warn("No predictions from the model!")
+            return {metric: float("nan") for metric in metrics}
+
+        # the standard metrics
+        results = {
+            metric: float(coco_eval.stats[idx] * 100 if coco_eval.stats[idx] >= 0 else "nan")
+            for idx, metric in enumerate(metrics)
+        }
+        self._logger.info(
+            "Evaluation results for {}: \n".format("segm") + create_small_table(results)
+        )
+        if not np.isfinite(sum(results.values())):
+            self._logger.info("Some metrics cannot be computed and is shown as NaN.")
+
+        if class_names is None or len(class_names) <= 1:
+            return results
+        # Compute per-category AP
+        # from https://github.com/facebookresearch/Detectron/blob/a6a835f5b8208c45d0dce217ce9bbda915f44df7/detectron/datasets/json_dataset_evaluator.py#L222-L252 # noqa
+        precisions = coco_eval.eval["precision"]
+        # precision has dims (iou, recall, cls, area range, max dets)
+        assert len(class_names) == precisions.shape[2]
+
+        results_per_category = []
+        for idx, name in enumerate(class_names):
+            # area range index 0: all area ranges
+            # max dets index -1: typically 100 per image
+            precision = precisions[:, :, idx, 0, -1]
+            precision = precision[precision > -1]
+            ap = np.mean(precision) if precision.size else float("nan")
+            results_per_category.append(("{}".format(name), float(ap * 100)))
+
+        # tabulate it
+        N_COLS = min(6, len(results_per_category) * 2)
+        results_flatten = list(itertools.chain(*results_per_category))
+        results_2d = itertools.zip_longest(*[results_flatten[i::N_COLS] for i in range(N_COLS)])
+        table = tabulate(
+            results_2d,
+            tablefmt="pipe",
+            floatfmt=".3f",
+            headers=["category", "AP"] * (N_COLS // 2),
+            numalign="left",
+        )
+        self._logger.info("Per-category {} AP: \n".format("segm") + table)
+
+        results.update({"AP-" + name: ap for name, ap in results_per_category})
+        return results
 
 
 def instances_to_coco_json_video(inputs, outputs):
@@ -203,3 +287,37 @@ def instances_to_coco_json_video(inputs, outputs):
         ytvis_results.append(res)
 
     return ytvis_results
+
+
+def _evaluate_predictions_on_coco(
+    coco_gt,
+    coco_results,
+    img_ids=None,
+):
+    """
+    Evaluate the coco results using COCOEval API.
+    """
+    assert len(coco_results) > 0
+
+    coco_results = copy.deepcopy(coco_results)
+    # When evaluating mask AP, if the results contain bbox, cocoapi will
+    # use the box area as the area of the instance, instead of the mask area.
+    # This leads to a different definition of small/medium/large.
+    # We remove the bbox field to let mask AP use mask area.
+    for c in coco_results:
+        c.pop("bbox", None)
+
+    coco_dt = coco_gt.loadRes(coco_results)
+    coco_eval = YTVOSeval(coco_gt, coco_dt)
+    # For COCO, the default max_dets_per_image is [1, 10, 100].
+    max_dets_per_image = [1, 10, 100]  # Default from COCOEval
+    coco_eval.params.maxDets = max_dets_per_image
+
+    if img_ids is not None:
+        coco_eval.params.imgIds = img_ids
+
+    coco_eval.evaluate()
+    coco_eval.accumulate()
+    coco_eval.summarize()
+
+    return coco_eval
