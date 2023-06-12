@@ -50,6 +50,10 @@ from vita import (
 )
 
 from genvis import add_genvis_config, WandBWriter
+import warnings
+
+# don't show warnings
+warnings.filterwarnings("ignore")
 
 class Trainer(DefaultTrainer):
     """
