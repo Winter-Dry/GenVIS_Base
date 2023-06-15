@@ -186,7 +186,7 @@ class Genvis(Vita):
             prev_aux_clip_indices = aux_clip_indices_list
         return losses
 
-    def diff_feature_fusion(self, features, alpha1=0.5, alpha2=0.5):  # (B*T,C,H,W)
+    def diff_feature_fusion(self, features, alpha1=1, alpha2=1):  # (B*T,C,H,W)
         BT = list(features.values())[0].shape[0]
         T = self.num_frames if self.training else BT
         B = BT // T
